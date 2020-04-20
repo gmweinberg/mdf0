@@ -1,0 +1,16 @@
+<!doctype html>
+<title>Metadiscussion Topics</title>
+<table>
+<tr><th>Topic</th><th>Messages</th><th>Unread</th><th>Last Message</th><th>Ghosts</th></tr>
+{% for topic_id in topic_stats %}
+<tr>
+    <td>{{topic_stats[topic_id]["title"]}}</td>
+    <td>{{topic_stats[topic_id]["total"]}}</td>
+    <td>{{topic_stats[topic_id]["unseen"]}}</td>
+    <td>{{topic_stats[topic_id]["last"]}}</td>
+    <td>{{topic_stats[topic_id]["ghosts"]}}</td>
+</tr>
+{% endfor %}
+</table>
+
+
