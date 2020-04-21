@@ -2,7 +2,7 @@ import os
 
 from flask import Flask, request, session, render_template, redirect
 from markupsafe import escape
-from mdf0_util import (get_config, get_sql_conn, check_password, get_topic_stats, recursive_kill)
+from mdf0_util import (get_config, get_sql_conn, check_password, get_topic_stats, recursive_kill, get_message_info, get_first_unseen_message)
 from secret import get_secret_key
 
 app = Flask(__name__)
@@ -49,6 +49,33 @@ def show_topics():
     user_id = get_user_id()
     topic_stats = get_topic_stats(conn, user_id)
     return render_template('topics.html', user_id=user_id, topic_stats=topic_stats)
+
+@app.route('/topic/<int:topic_id>')
+def show_first_message(topic_id):
+    user_id = get_user_id()
+    message_id = get_first_unseen_message(conn, user_id, topic_id)
+    if message_id is None:
+        return redirect('/nothing/{}'.format(topic_id))
+    return redirect('/message/{}'.format(message_id))
+
+@app.route('/nothing/<int:topic_id>')
+def show_nothing(topic_id):
+    """Display no more messages for this topic."""
+    return render_template('nothing.html')
+
+@app.route('/message/<int:message_id>')
+def show_message(message_id):
+    message_info = get_message_info(conn, message_id=message_id)
+    if not message_info:
+        return redirect('/oops') 
+    message = message_info['message']
+    parent_id = message_info.get('parent_id')
+    return render_template('message.html', message=message, parent_id=parent_id)
+
+@app.route('/oops')
+def show_oops():
+    """Display an error page."""
+    return render_template('oops.html')
 
 @app.route('/path/<path:subpath>')
 def show_subpath(subpath):

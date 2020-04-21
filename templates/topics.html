@@ -4,7 +4,7 @@
 <tr><th>Topic</th><th>Messages</th><th>Unread</th><th>Last Message</th><th>Ghosts</th></tr>
 {% for topic_id in topic_stats %}
 <tr>
-    <td>{{topic_stats[topic_id]["title"]}}</td>
+    <td><a href="/topic/{{topic_id}}">{{topic_stats[topic_id]["title"]}}</a></td>
     <td>{{topic_stats[topic_id]["total"]}}</td>
     <td>{{topic_stats[topic_id]["unseen"]}}</td>
     <td>{{topic_stats[topic_id]["last"]}}</td>

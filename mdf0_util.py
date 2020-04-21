@@ -72,6 +72,58 @@ def get_topic_stats(conn, user_id):
     print(result)
     return result
 
+def get_message_info(conn, message_id):
+    """Get the info we need to display this message. Returns a dict."""
+    # for now it's just the message text and the parent_id
+    cur = conn.cursor()
+    query = """SELECT message, parent_id from Message where id=%s"""
+    cur.execute(query, (message_id))
+    row = cur.fetchone()
+    if row:
+        return {'message':row[0], 'parent_id':row[1]}
+    
+
+def get_first_unseen_message(conn, user_id, topic_id):
+    """Get the first unseen unkilled message for this user topic."""
+    cur = conn.cursor()
+    query = """SELECT min(m.id) from Message m
+               LEFT JOIN Kill_{} k on k.message_id = m.id
+               LEFT JOIN Seen s on s.user_id = m.user_id
+               WHERE m.user_id ={} AND k.message_id IS NULL AND s.message_id IS NULL""".format(user_id, user_id)
+    cur.execute(query)
+    row = cur.fetchone()
+    if row:
+        return row[0]
+    
+
+def get_next_message_id(conn, user_id, message_id, childless=None):
+    """Get the next unseen unkilled message for this user."""
+    if childless is None:
+        childless = []
+    cur = conn.cursor()
+    children = []
+    query = """SELECT m.id, s.user_id 
+               FROM Message m 
+               LEFT JOIN Kill_{} k on k.message_id = m.id 
+               LEFT JOIN Seen s on s.user_id = m.user_id 
+               WHERE k.message_id IS NULL and m.parent_id={} ORDER BY m.id""".format(user_id, message_id)
+    cur.execute(query)
+    for row in cur.fetchall():
+        if row[1] is None: # haven't seen this one
+            return row[0]
+        if row[0] not in childless:
+             children.append(row[0])
+    if children:
+        return get_next_message_id(conn, user_id, row[0], childless)
+    childless.append(message_id)
+    query = "SELECT parent_id from Message where id = %s"
+    cur.execute(query, message_id)
+    row = cur.fetchone()
+    if row[0] is None:
+        return None # no more unseen messages in this topic
+    return get_next_message_id(conn, user_id, row[0], childless)
+
+
 def recursive_kill(conn, user_id):
     """Create a table to store all killed messages for a user."""
     # We use a recursive sql query to find messages with killed parents or user kills
@@ -145,20 +197,6 @@ def unkill_user(conn, user_id, target_id):
     cur.execute(query, (user_id, target_id))
     conn.commit()
 
-def sync_seen(conn):
-    """Mark all messages as seen by their authors. Mark all parents of seen messages as seen."""
-    # This function is primarily useful for getting seen correct for test data.
-    cur = conn.cursor()
-    query = """INSERT IGNORE INTO Seen (user_id, message_id)
-                WITH RECURSIVE  rseen as (
-                   SELECT m.user_id, m.id, m.parent_id from Message m
-               UNION
-                   select  rseen.user_id, m.id, m.parent_id FROM rseen JOIN Message m on m.id = rseen.parent_id
-               )
-               SELECT user_id, id from rseen
-            """
-    cur.execute(query)
-    conn.commit()
 
 def check_password(conn, username, password):
     """Check if the supplied username and password are valid according to bcrypt. Returns user_id if username and password match, None otherwise"""
