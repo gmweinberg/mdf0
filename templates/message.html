@@ -1,6 +1,26 @@
 <!doctype html>
 <title>MDForum</title>
-<a href="/message/{{parent_id}}">Parent</a><br>
-{{message}}
+{% if parent_id %}
+<a href="/message/{{message_info['parent_id']}}">Parent</a>
 <br>
+{% endif %}
+{{message_info['user_name']}} {{message_info['created']}}
+<br>
+{{message_info['message']}}
+<br>
+{%if message_info.get('next_id') %}
+<a href="/message/{{message_info['next_id']}}">Next</a>
+{% endif %}
+<br>
+<a href="/killuser?user={{message_info['user_id']}}&message={{message_info['message_id']}}">Kill User</a>
+<a href="/killmessage/{{message_info['message_id']}}">Kill Tree</a>
+<a href="/killmessage/{{message_info['topic_root']}}">Kill Topic</a>
+<br>
+<form method="POST" action="/reply">
+<textarea name="message" rows=30 columns=100>
+</textarea>
+<input name="message_id" value={{message_info['message_id']}} type="hidden">
+<input name="submit" type="submit">
+</form>
+
 

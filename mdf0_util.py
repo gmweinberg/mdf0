@@ -40,7 +40,7 @@ def get_topic_stats(conn, user_id):
     # unseen messages
     query = """SELECT t.id, count(m.id) FROM Topic t
                JOIN Message m on m.topic_id = t.id
-               LEFT JOIN Seen s on s.user_id = {} and s.message_id = t.id
+               LEFT JOIN Seen s on s.user_id = {} and s.message_id = m.id
                LEFT JOIN Kill_{} km on km.message_id = m.id
                WHERE s.user_id IS NULL and km.message_id IS NULL
                GROUP BY 1""".format(user_id, user_id)
@@ -51,7 +51,7 @@ def get_topic_stats(conn, user_id):
     # seen messages
     query = """SELECT t.id, count(m.id) FROM Topic t
                JOIN Message m on m.topic_id = t.id
-               JOIN Seen s on s.user_id = {} and s.message_id = t.id
+               JOIN Seen s on s.user_id = {} and s.message_id = m.id
                GROUP BY 1""".format(user_id)
     cur.execute(query)
     qr = cur.fetchall()
@@ -72,24 +72,39 @@ def get_topic_stats(conn, user_id):
     print(result)
     return result
 
-def get_message_info(conn, message_id):
+def get_message_info(conn, message_id, user_id):
     """Get the info we need to display this message. Returns a dict."""
-    # for now it's just the message text and the parent_id
     cur = conn.cursor()
-    query = """SELECT message, parent_id from Message where id=%s"""
-    cur.execute(query, (message_id))
+    query = """SELECT message, parent_id, m.created, m.user_id, u.name
+               FROM Message m
+               JOIN User u on u.id = m.user_id
+               WHERE m.id=%s"""
+    cur.execute(query, (message_id,))
+    row = cur.fetchone()
+    if not row:
+        return
+    result = {'message':row[0], 'parent_id':row[1], 'created':row[2], 'user_id':row[3], 'user_name':row[4]}
+    result['message_id'] = message_id
+    result['next_id'] = get_next_message_id(conn, user_id, message_id)
+    return result
+
+def get_topic_id(conn, message_id):
+    """Get the topic_id from the message_id."""
+    cur = conn.cursor()
+    query = "SELECT topic_id from Message where id = %s"
+    cur.execute(query, (message_id,))
     row = cur.fetchone()
     if row:
-        return {'message':row[0], 'parent_id':row[1]}
-    
+        return row[0]
+   
 
 def get_first_unseen_message(conn, user_id, topic_id):
     """Get the first unseen unkilled message for this user topic."""
     cur = conn.cursor()
     query = """SELECT min(m.id) from Message m
                LEFT JOIN Kill_{} k on k.message_id = m.id
-               LEFT JOIN Seen s on s.user_id = m.user_id
-               WHERE m.user_id ={} AND k.message_id IS NULL AND s.message_id IS NULL""".format(user_id, user_id)
+               LEFT JOIN Seen s on s.message_id = m.id and s.user_id={}
+               WHERE m.topic_id ={} AND k.message_id IS NULL AND s.message_id IS NULL""".format(user_id, user_id, topic_id)
     cur.execute(query)
     row = cur.fetchone()
     if row:
@@ -100,13 +115,15 @@ def get_next_message_id(conn, user_id, message_id, childless=None):
     """Get the next unseen unkilled message for this user."""
     if childless is None:
         childless = []
+    print('get_next_message_id message_id {} childless {}'.format(message_id, childless))
     cur = conn.cursor()
+        
     children = []
     query = """SELECT m.id, s.user_id 
                FROM Message m 
                LEFT JOIN Kill_{} k on k.message_id = m.id 
-               LEFT JOIN Seen s on s.user_id = m.user_id 
-               WHERE k.message_id IS NULL and m.parent_id={} ORDER BY m.id""".format(user_id, message_id)
+               LEFT JOIN Seen s on s.message_id = m.id AND s.user_id={} 
+               WHERE k.message_id IS NULL and m.parent_id={} ORDER BY m.id""".format(user_id, user_id, message_id)
     cur.execute(query)
     for row in cur.fetchall():
         if row[1] is None: # haven't seen this one
@@ -114,46 +131,15 @@ def get_next_message_id(conn, user_id, message_id, childless=None):
         if row[0] not in childless:
              children.append(row[0])
     if children:
-        return get_next_message_id(conn, user_id, row[0], childless)
+        return get_next_message_id(conn, user_id, children[0], childless)
     childless.append(message_id)
     query = "SELECT parent_id from Message where id = %s"
-    cur.execute(query, message_id)
+    cur.execute(query, (message_id, ))
     row = cur.fetchone()
     if row[0] is None:
         return None # no more unseen messages in this topic
     return get_next_message_id(conn, user_id, row[0], childless)
 
-
-def recursive_kill(conn, user_id):
-    """Create a table to store all killed messages for a user."""
-    # We use a recursive sql query to find messages with killed parents or user kills
-    cur = conn.cursor()
-    query = 'DROP TABLE IF EXISTS Kill_{}'.format(user_id)
-    cur.execute(query)
-    query = 'CREATE TABLE Kill_{} (message_id int primary key not null)'.format(user_id)
-    cur.execute(query)
-    query = """INSERT IGNORE INTO Kill_{} (message_id)
-               WITH RECURSIVE ukm as (
-                      Select m.id FROM Message m join User_Kill uk on uk.user_id = {} and uk.target_id = m.user_id
-                  UNION
-                      select m.id from Message m join ukm on m.parent_id = ukm.id
-               )
-               SELECT id from ukm
-             """.format(user_id, user_id)
-    # print(query)
-    cur.execute(query)
-    query = """ INSERT IGNORE INTO Kill_{} (message_id)
-                WITH RECURSIVE mkm as (
-                   SELECT m1.id from Message m1 join Message_Kill mk on mk.user_id = {} and m1.id = mk.message_id
-               UNION
-                   select m1.id from Message m1 join mkm on m1.parent_id = mkm.id
-               )
-               SELECT id from mkm
-            """.format(user_id, user_id)
-    # print(query)
-    cur.execute(query)
-    conn.commit()
-    
 
 def get_sql_conn(config):
     """Get a sql connection."""
@@ -162,20 +148,6 @@ def get_sql_conn(config):
     return conn
 
 
-def kill_message(conn, user_id, message_id):
-    """Mark a message as killed for a user."""
-    cur = conn.cursor()
-    query = "INSERT IGNORE INTO Message_Kill (user_id, message_id) values (%s, %s)"
-    cur.execute(query, (user_id, message_id))
-    conn.commit()
-
-def kill_user(conn, user_id, target_id):
-    """Mark a target as killed for a viewer user."""
-    cur = conn.cursor()
-    query = "INSERT IGNORE INTO User_Kill (user_id, target_id) values (%s, %s)"
-    cur.execute(query, (user_id, target_id))
-    conn.commit()
-
 def set_seen(conn, user_id, message_id):
     """Mark a message as seen by some user."""
     cur = conn.cursor()
@@ -183,20 +155,35 @@ def set_seen(conn, user_id, message_id):
     cur.execute(query, (user_id, message_id))
     conn.commit()
 
-def unkill_message(conn, user_id, message_id):
-    """Remove the kill for a user message"""
-    cur = conn.cursor()
-    query = "DELETE * from  Message_Kill where user_id=%s and message_id=%s"
-    cur.execute(query, (user_id, message_id))
-    conn.commit()
 
-def unkill_user(conn, user_id, target_id):
-    """Remove the kill for a user target"""
+def add_reply(conn, user_id, parent_id, message):
+    """Add a new reply to the supplied message"""
+    topic_id = get_topic_id(conn, parent_id)
+    if topic_id is None:
+        raise Exception('No such message_id')
     cur = conn.cursor()
-    query = "DELETE * from  User_Kill where user_id=%s and target_id=%s"
-    cur.execute(query, (user_id, target_id))
+    query = "INSERT INTO Message (user_id, parent_id, topic_id, message) values (%s, %s, %s, %s)"
+    cur.execute(query, (user_id, parent_id, topic_id, message))
     conn.commit()
+    message_id = conn.insert_id()
+    set_seen(conn, user_id, message_id)
+    return message_id
 
+def new_topic(conn, user_id, title, message):
+    """Add a new topic with supplied subject. Returns the new topic_id"""
+    cur = conn.cursor()
+    query = "INSERT INTO Topic (title, user_id) VALUES (%s, %s)"
+    cur.execute(query, (title, user_id))
+    topic_id = conn.insert_id()
+    query = "INSERT INTO Message (user_id, topic_id, message) values (%s, %s, %s)"
+    cur.execute(query, (user_id, topic_id, message))
+    message_id = conn.insert_id()
+    query = "UPDATE Topic set base_message_id=%s WHERE id=%s"
+    cur.execute(query, (message_id, topic_id))
+    conn.commit()
+    set_seen(conn, user_id, message_id)
+    return topic_id
+    
 
 def check_password(conn, username, password):
     """Check if the supplied username and password are valid according to bcrypt. Returns user_id if username and password match, None otherwise"""
