@@ -1,0 +1,25 @@
+<!doctype html>
+<title>MDForum Kills</title>
+<h2>User Kills</h2>
+<table>
+<tr><th></th><th>User</th><th>Killed At</th><th>Unkill</th></tr>
+{%for row in user_kills %}
+<tr>
+<td>{{row['user_name']}}</td><td>{{row['killed_at']}}</td><td><a href="/unkilluser/{{row['target_id']}}">Unkill</a></td>
+</tr>
+{% endfor %}
+</table>
+<h2>Message Kills</h2>
+<table>
+<tr><th></th><th>User</th><th>Topic</th><th>Killed At</th><th>Posted At</th><th>Unkill</th></tr>
+{%for row in message_kills %}
+<tr>
+<td>{{row['user_name']}}</td>
+<td>{{row['topic_title']}}</td>
+<td>{{row['killed_at']}}</td>
+<td>{{row['posted_at']}}</td>
+<td><a href="/unkillmessage/{{row['message_id']}}">Unkill</a></td>
+</tr>
+{% endfor %}
+</table>
+

@@ -1,0 +1,13 @@
+<!doctype html>
+<title>MDForum</title>
+<table>
+<tr><th></th><th>User</th><th>Posted</th><th>Blah</th></tr>
+{%for row in thetable %}
+<tr>
+<td><a href="/message/{{row['message_id']}}">{{row['indent']}}</a></td><td>{{row['user_name']}}</td><td>{{row['created']}}</td>
+{#
+    <td>{{row['message']}}</td>
+#}
+</tr>
+{%endfor%}
+</table>

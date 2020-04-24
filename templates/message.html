@@ -15,6 +15,7 @@
 <a href="/killuser?user={{message_info['user_id']}}&message={{message_info['message_id']}}">Kill User</a>
 <a href="/killmessage/{{message_info['message_id']}}">Kill Tree</a>
 <a href="/killmessage/{{message_info['topic_root']}}">Kill Topic</a>
+<a href="/tree/{{message_info['topic_id']}}">Topic Tree</a>
 <br>
 <form method="POST" action="/reply">
 <textarea name="message" rows=30 columns=100>

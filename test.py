@@ -1,7 +1,8 @@
 #!/usr/bin/python
 import argparse
 
-from mdf0_util import get_config, get_sql_conn, get_topic_stats, get_next_message_id, set_seen
+from mdf0_config import get_config
+from mdf0_util import get_sql_conn, get_topic_stats, get_next_message_id, set_seen, topic_tree
 from kill_util import recursive_kill
 from mdf0_test_util import sync_seen, diddle_message_times
 
@@ -13,9 +14,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose', action='store_true')
     parser.add_argument('--config', help='config filename', default="./etc/test.conf")
-    # paras we may need for actions
+    # params we may need for actions
     parser.add_argument('--user', help='user_id', type=int, default=None)
     parser.add_argument('--message', help='message_id', type=int, default=None)
+    parser.add_argument('--topic', help='show tree list for topic', type=int, default=None)
     # actions
     parser.add_argument('--sync', help='sync_seen', action='store_true')
     parser.add_argument('--diddle', help='diddle message times', action='store_true')
@@ -37,4 +39,6 @@ if __name__ == '__main__':
         sync_seen(conn)
     if args.diddle:
        diddle_message_times(conn)
+    if args.topic:
+       print(repr(topic_tree(conn, user_id=args.user, topic_id=args.topic)))
 

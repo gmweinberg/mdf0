@@ -1,14 +1,9 @@
 """Utility functions for mdf0"""
 
-import MySQLdb as mdb
-from configparser import ConfigParser
 import bcrypt
+import MySQLdb as mdb
+from mdf0_config import Mdf0SqlConfig
 
-def get_config(config_filename):
-    """Return a ConfigParser object from the filename."""
-    config = ConfigParser()
-    config.read(config_filename)
-    return config
 
 def get_topic_guest_stats(conn):
     """Get the name, total messages, and last message for each topic. Returns a dict."""
@@ -75,7 +70,7 @@ def get_topic_stats(conn, user_id):
 def get_message_info(conn, message_id, user_id):
     """Get the info we need to display this message. Returns a dict."""
     cur = conn.cursor()
-    query = """SELECT message, parent_id, m.created, m.user_id, u.name
+    query = """SELECT message, parent_id, m.created, m.user_id, m.topic_id, u.name
                FROM Message m
                JOIN User u on u.id = m.user_id
                WHERE m.id=%s"""
@@ -83,7 +78,7 @@ def get_message_info(conn, message_id, user_id):
     row = cur.fetchone()
     if not row:
         return
-    result = {'message':row[0], 'parent_id':row[1], 'created':row[2], 'user_id':row[3], 'user_name':row[4]}
+    result = {'message':row[0], 'parent_id':row[1], 'created':row[2], 'user_id':row[3], 'topic_id':row[4], 'user_name':row[4]}
     result['message_id'] = message_id
     result['next_id'] = get_next_message_id(conn, user_id, message_id)
     return result
@@ -143,7 +138,7 @@ def get_next_message_id(conn, user_id, message_id, childless=None):
 
 def get_sql_conn(config):
     """Get a sql connection."""
-    conn = mdb.connect(host=config.get('sql', 'host'), user=config.get('sql', 'user'), password=config.get('sql', 'password'), database=config.get('sql', 'database'),
+    conn = mdb.connect(host=config.host, user=config.user, password=config.password, database=config.database,
                        charset='utf8mb4', use_unicode=True)
     return conn
 
@@ -183,6 +178,52 @@ def new_topic(conn, user_id, title, message):
     conn.commit()
     set_seen(conn, user_id, message_id)
     return topic_id
+
+def topic_tree(conn, topic_id, user_id):
+    """Return a list of all messages in the topic as a list of dicts in view order for the user"""
+    cur = conn.cursor(mdb.cursors.DictCursor)
+    query = """SELECT m.id AS message_id, m.created As created, m.user_id AS user_id, m.parent_id AS parent_id, m.message AS message, 
+               u.name AS user_name, mk.message_id AS message_kill, uk.user_id AS user_kill, s.message_id AS seen
+               FROM Message m
+               JOIN User u on u.id = m.user_id
+               LEFT JOIN Message_Kill mk on mk.user_id=%s and mk.message_id = m.id
+               LEFT JOIN User_Kill uk on uk.user_id=%s AND uk.target_id = m.id
+               LEFT JOIN Seen s on s.user_id=%s AND s.message_id = m.id
+               WHERE m.topic_id=%s
+               ORDER BY m.id"""
+    cur.execute(query, (user_id, user_id, user_id, topic_id))
+    topic_dict = {}
+    qr = cur.fetchall()
+    for row in qr:
+        if row['parent_id'] is None:
+            root = row['message_id']
+        topic_dict[row['message_id']] = dict(row)
+        topic_dict[row['message_id']]['children'] = []
+        topic_dict[row['message_id']]['user_kill'] = bool(row['user_kill'])
+        topic_dict[row['message_id']]['message_kill'] = bool(row['message_kill'])
+        topic_dict[row['message_id']]['seen'] = bool(row['seen'])
+        if row['parent_id'] in topic_dict: # should be true execpt root message of topic
+             topic_dict[row['parent_id']]['children'].append(row['message_id'])
+        topic_dict[row['message_id']]['indent'] = 0
+
+    nodes = []
+    indent = 0
+    _transverse_tree(topic_dict, root, indent, nodes)
+    print(repr(nodes))
+    return nodes
+    
+
+def _transverse_tree(thedict, pos, indent, nodes):
+    """Helper function called recursively to get the nodes in display order from thedict. Updates nodes in place, returns None."""
+    thedict[pos]['indent'] = indent
+    nodes.append(thedict[pos])
+    indent += 1
+    for node in thedict[pos]['children']:
+         _transverse_tree(thedict, node, indent, nodes)
+        
+      
+
+    
     
 
 def check_password(conn, username, password):
@@ -196,7 +237,6 @@ def check_password(conn, username, password):
     if bcrypt.checkpw(password.encode('utf8'), row[1].encode('utf8')):
         return row[0]
 
-          
      
   
 

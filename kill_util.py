@@ -48,15 +48,38 @@ def kill_user(conn, user_id, target_id):
 def unkill_message(conn, user_id, message_id):
     """Remove the kill for a user message"""
     cur = conn.cursor()
-    query = "DELETE * from  Message_Kill where user_id=%s and message_id=%s"
+    query = "DELETE from  Message_Kill where user_id=%s and message_id=%s"
     cur.execute(query, (user_id, message_id))
     conn.commit()
 
 def unkill_user(conn, user_id, target_id):
     """Remove the kill for a user target"""
     cur = conn.cursor()
-    query = "DELETE * from  User_Kill where user_id=%s and target_id=%s"
+    query = "DELETE from  User_Kill where user_id=%s and target_id=%s"
     cur.execute(query, (user_id, target_id))
     conn.commit()
+
+def get_user_kills(conn, user_id):
+    """Return a list of all user_kills for this user"""
+    cur = conn.cursor(mdb.cursors.DictCursor)
+    query = """SELECT uk.target_id AS target_id, uk.created AS killed_at, u.name AS user_name
+               FROM User_Kill uk
+               JOIN User u on u.id = uk.target_id
+               WHERE uk.user_id=%s"""
+    cur.execute(query, (user_id, ))
+    return [row for row in cur.fetchall()]
+
+def get_message_kills(conn, user_id):
+    """Return a list of all message_kills for this user"""
+    cur = conn.cursor(mdb.cursors.DictCursor)
+    query = """SELECT mk.message_id AS message_id, mk.created AS killed_at, m.created as posted_at, u.name AS user_name, t.title AS topic_title
+               FROM Message_Kill mk
+               JOIN User u on u.id = mk.user_id
+               JOIN Message m on m.id = mk.message_id
+               JOIN Topic t on t.id = m.topic_id
+               WHERE mk.user_id=%s"""
+    cur.execute(query, (user_id, ))
+    result = []
+    return [row for row in cur.fetchall()]
 
 

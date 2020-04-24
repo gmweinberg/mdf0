@@ -1,11 +1,13 @@
 import os
 import logging
+import sys
 
 from flask import Flask, request, session, render_template, redirect
 from markupsafe import escape
-from mdf0_util import (get_config, get_sql_conn, check_password, get_topic_stats, get_topic_id, get_message_info, get_next_message_id, get_first_unseen_message, 
-                      new_topic, add_reply, set_seen)
-from kill_util import recursive_kill, kill_message, kill_user, unkill_message, unkill_user
+from mdf0_config import get_config
+from mdf0_util import (get_sql_conn, check_password, get_topic_stats, get_topic_id, get_message_info, get_next_message_id, get_first_unseen_message, 
+                      new_topic, add_reply, set_seen, topic_tree)
+from kill_util import recursive_kill, kill_message, kill_user, unkill_message, unkill_user, get_user_kills, get_message_kills
 from secret import get_secret_key
 
 app = Flask(__name__)
@@ -33,9 +35,9 @@ def show_next(conn, user_id, message_id):
         return redirect('/nothing/{}'.format(topic_id))
     return redirect('/message/{}'.format(next_id))
 
-@app.route("/")
+@app.route("/hello")
 def hello():
-    return "Hello, World!"
+    return "{}".format(sys.version)
 
 @app.route('/register', methods=['GET'])
 def show_register_form():
@@ -89,6 +91,15 @@ def show_oops():
     """Display an error page."""
     return render_template('oops.html')
 
+@app.route('/kills')
+def show_kills():
+    """Show all kills for this user, allow unkills"""
+    user_id = get_user_id()
+    message_kills = get_message_kills(conn, user_id)
+    user_kills = get_user_kills(conn, user_id)
+    return render_template('kills.html', user_kills=user_kills, message_kills=message_kills)
+
+
 
 @app.route('/killmessage/<int:message_id>')
 def killmessage(message_id):
@@ -97,6 +108,14 @@ def killmessage(message_id):
     kill_message(conn, user_id=user_id, message_id=message_id)
     recursive_kill(conn, user_id)
     return show_next(conn, user_id, message_id)
+
+@app.route('/unkillmessage/<int:message_id>')
+def unkillmessage(message_id):
+    """Mark a message as unkilled, then display the kills page."""
+    user_id = get_user_id()
+    unkill_message(conn, user_id=user_id, message_id=message_id)
+    return redirect('/kills')
+
 
 @app.route('/killuser')
 def killuser():
@@ -113,6 +132,14 @@ def killuser():
     kill_user(conn, user_id, target_id)
     recursive_kill(conn, user_id)
     return show_next(conn, user_id, message_id)
+
+@app.route('/unkilluser/<int:target_id>')
+def unkilluser(target_id):
+    """Mark a target user as unkilled, then display the kills page."""
+    user_id = get_user_id()
+    unkill_user(conn, user_id, target_id)
+    return redirect('/kills')
+
 
 @app.route('/reply', methods=['POST'])
 def reply():
@@ -147,5 +174,11 @@ def process_new_topic():
     return redirect('/topics')        
 
     
+@app.route('/tree/<int:topic_id>')
+def show_tree(topic_id):
+    """Show the tree for this topic_id."""
+    user_id = get_user_id()
+    thetable = topic_tree(conn, user_id=user_id, topic_id=topic_id)
+    return render_template('tree.html', thetable=thetable)
 
     
