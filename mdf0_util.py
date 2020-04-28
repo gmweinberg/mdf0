@@ -1,7 +1,6 @@
 """Utility functions for mdf0"""
-
-import bcrypt
 import MySQLdb as mdb
+
 from mdf0_config import Mdf0SqlConfig
 
 
@@ -64,7 +63,6 @@ def get_topic_stats(conn, user_id):
     for row in qr:
         result[row[0]]['ghosts'] = row[1]
 
-    print(result)
     return result
 
 def get_message_info(conn, message_id, user_id):
@@ -220,23 +218,6 @@ def _transverse_tree(thedict, pos, indent, nodes):
     indent += 1
     for node in thedict[pos]['children']:
          _transverse_tree(thedict, node, indent, nodes)
-        
-      
-
-    
-    
-
-def check_password(conn, username, password):
-    """Check if the supplied username and password are valid according to bcrypt. Returns user_id if username and password match, None otherwise"""
-    cur = conn.cursor()
-    query = "SELECT id, password FROM User where name = %s"
-    cur.execute(query, (username,))
-    row = cur.fetchone()
-    if not row:
-        return
-    if bcrypt.checkpw(password.encode('utf8'), row[1].encode('utf8')):
-        return row[0]
-
      
   
 

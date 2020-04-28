@@ -1,10 +1,11 @@
 #!/usr/bin/python
+import subprocess
 import argparse
 
 from mdf0_config import get_config
 from mdf0_util import get_sql_conn, get_topic_stats, get_next_message_id, set_seen, topic_tree
 from kill_util import recursive_kill
-from mdf0_test_util import sync_seen, diddle_message_times
+from mdf0_test_util import sync_seen, diddle_message_times, verify_all
 
 verbose = False
 config_file = None
@@ -24,10 +25,20 @@ if __name__ == '__main__':
     parser.add_argument('--stats', help='get topic stats', action='store_true')
     parser.add_argument('--next', help='get next message', action='store_true')
     parser.add_argument('--seen', help='set message seen by user', action='store_true')
+    parser.add_argument('--restore', help='restore test database to initial state.', action='store_true')
     args = parser.parse_args()
     verbose = args.verbose
-    config = get_config(args.config)
-    conn = get_sql_conn(config)
+    sql_config = get_config(args.config)
+    conn = get_sql_conn(sql_config)
+    if args.restore:
+        with open('./sql/schema.sql', 'r') as schema:
+            subprocess.run(['mysql', '-h',  sql_config.host, '-u', sql_config.user, '-p{}'.format(sql_config.password), sql_config.database], stdin=schema)
+        with open('./sql/test/sample1.sql', 'r') as sample_data:
+            subprocess.run(['mysql', '-h',  sql_config.host, '-u', sql_config.user, '-p{}'.format(sql_config.password), sql_config.database], stdin=sample_data)
+        args.diddle = True
+        args.sync = True
+        verify_all(conn)
+        
     if args.stats:
         recursive_kill(conn, args.user)
         get_topic_stats(conn, args.user)

@@ -14,6 +14,6 @@ def get_config(config_filename):
     config = ConfigParser()
     config.read(config_filename)
     sqlconf = Mdf0SqlConfig(host=config.get('sql', 'host'), user=config.get('sql', 'user'), password=config.get('sql', 'password'), database=config.get('sql', 'database'))
-    print(repr(sqlconf))
+    # print(repr(sqlconf))
     return sqlconf
 

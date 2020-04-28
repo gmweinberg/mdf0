@@ -31,4 +31,11 @@ def diddle_message_times(conn):
     for anid in ids:
          cur.execute(query, (then, anid))
          then += timedelta(hours=1)
-    conn.commit()    
+    conn.commit()
+
+def verify_all(conn):
+    """Mark all users as verified."""
+    cur = conn.cursor()
+    query = "UPDATE User set verified=1"
+    cur.execute(query)
+    conn.commit() 

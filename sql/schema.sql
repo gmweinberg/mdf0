@@ -3,13 +3,19 @@ CREATE TABLE `User` (
     id int not null primary key auto_increment,
     name varchar(255) not null,
     password varchar(255) not null,
-    created timestamp not null default CURRENT_TIMESTAMP);
+    email varchar(255) NULL,
+    temp tinyint NOT NULL default 0,
+    verified tinyint NOT NULL default 0,
+    created timestamp not null default CURRENT_TIMESTAMP,
+    last_access timestamp NOT NULL);
 
+CREATE UNIQUE INDEX user_email on User (email);
+ 
 DROP TABLE IF EXISTS `Topic`;
 CREATE TABLE `Topic` (
     id int not null primary key auto_increment,
     title varchar(255) NOT NULL,
-    user_id int not null,
+    user_id int not null, -- this probably isn't necessary
     base_message_id int NULL,
     created timestamp not null default CURRENT_TIMESTAMP);
 
@@ -21,6 +27,11 @@ CREATE TABLE `Message` (
     parent_id int NULL,
     topic_id int NULL,
     message text NOT NULL);
+
+-- index everything here!
+CREATE INDEX message_user on Message (user_id);
+CREATE INDEX message_parent on Message (parent_id);
+CREATE INDEX message_topic on Message (topic_id);
 
 DROP TABLE IF EXISTS `Seen`;
 CREATE TABLE `Seen` (

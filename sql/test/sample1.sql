@@ -10,13 +10,13 @@ TRUNCATE TABLE Seen;
 TRUNCATE TABLE User_Kill;
 TRUNCATE TABLE Message_Kill;
 
-INSERT INTO User (id, name, password) VALUES (1000, 'Particle Man', '$2b$12$i1sdmT5oq74yWY5Q3txOeOy72.DPZXlmFG6hOzfBWCVGvnjMx2Rm2'); -- testuser
-INSERT INTO User (id, name, password) VALUES (1001, 'Triangle Man', '$2b$12$i1sdmT5oq74yWY5Q3txOeOy72.DPZXlmFG6hOzfBWCVGvnjMx2Rm2'); -- testuser
-INSERT INTO User (id, name, password) VALUES (1002, 'Person Person', '$2b$12$i1sdmT5oq74yWY5Q3txOeOy72.DPZXlmFG6hOzfBWCVGvnjMx2Rm2'); -- testuser
-INSERT INTO User (id, name, password) VALUES (1003, 'Simplicius', '$2b$12$i1sdmT5oq74yWY5Q3txOeOy72.DPZXlmFG6hOzfBWCVGvnjMx2Rm2'); -- testuser
-INSERT INTO User (id, name, password) VALUES (1004, 'Cornholio', '$2b$12$i1sdmT5oq74yWY5Q3txOeOy72.DPZXlmFG6hOzfBWCVGvnjMx2Rm2'); -- testuser
-INSERT INTO User (id, name, password) VALUES (1005, 'Mrs. Wright', '$2b$12$i1sdmT5oq74yWY5Q3txOeOy72.DPZXlmFG6hOzfBWCVGvnjMx2Rm2'); -- testuser
-INSERT INTO User (id, name, password) VALUES (1006, 'Mr. Rection', '$2b$12$i1sdmT5oq74yWY5Q3txOeOy72.DPZXlmFG6hOzfBWCVGvnjMx2Rm2'); -- testuser
+INSERT INTO User (id, name, password, email, last_access) VALUES (1000, 'Particle Man', '$2b$12$i1sdmT5oq74yWY5Q3txOeOy72.DPZXlmFG6hOzfBWCVGvnjMx2Rm2', 'particle@fake.com', now()); -- testuser
+INSERT INTO User (id, name, password, email, last_access) VALUES (1001, 'Triangle Man', '$2b$12$i1sdmT5oq74yWY5Q3txOeOy72.DPZXlmFG6hOzfBWCVGvnjMx2Rm2', 'triangle@fake.com', now());
+INSERT INTO User (id, name, password, email, last_access) VALUES (1002, 'Person Person', '$2b$12$i1sdmT5oq74yWY5Q3txOeOy72.DPZXlmFG6hOzfBWCVGvnjMx2Rm2', 'person@fake.com', now()); -- testuser
+INSERT INTO User (id, name, password, email, last_access) VALUES (1003, 'Simplicius', '$2b$12$i1sdmT5oq74yWY5Q3txOeOy72.DPZXlmFG6hOzfBWCVGvnjMx2Rm2', 'simplicius@fake.com', now()); -- testuser
+INSERT INTO User (id, name, password, email, last_access) VALUES (1004, 'Cornholio', '$2b$12$i1sdmT5oq74yWY5Q3txOeOy72.DPZXlmFG6hOzfBWCVGvnjMx2Rm2', 'cornholio@fake.com', now()); -- testuser
+INSERT INTO User (id, name, password, email, last_access) VALUES (1005, 'Mrs. Wright', '$2b$12$i1sdmT5oq74yWY5Q3txOeOy72.DPZXlmFG6hOzfBWCVGvnjMx2Rm2', 'wright@fake.com', now()); -- testuser
+INSERT INTO User (id, name, password, email, last_access) VALUES (1006, 'Mr. Rection', '$2b$12$i1sdmT5oq74yWY5Q3txOeOy72.DPZXlmFG6hOzfBWCVGvnjMx2Rm2', 'rection@fake.com', now()); -- testuser
 
 Insert into Topic (id, title, user_id) VALUES (1001, 'Start Here', 1006);
 Insert into Topic (id, title, user_id) VALUES (1002, 'Experience is Garbage', 1002);
