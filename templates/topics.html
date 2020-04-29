@@ -1,5 +1,10 @@
 <!doctype html>
 <title>Metadiscussion Topics</title>
+{%if user_info.temp %}
+    {% include 'login_links.html' %}
+{% else %}
+    {% include 'logout_link.html' %}
+{% endif %}
 <table>
 <tr><th>Topic</th><th>Messages</th><th>Unread</th><th>Last Message</th><th>Ghosts</th></tr>
 {% for topic_id in topic_stats %}

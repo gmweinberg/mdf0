@@ -29,9 +29,9 @@ def obtain_user_info():
             user_id = None
     if user_id:
         return get_user_info(conn, user_id)
-    user_id = create_temp_user(conn)
-    session['user_id'] = user_id
-    return get_user_info(conn, user_id)
+    user_info = create_temp_user(conn)
+    session['user_id'] = user_info.user_id
+    return user_info
 
 def show_next(conn, user_id, message_id):
     """Show the next message if there is one."""
@@ -95,7 +95,8 @@ def show_first_message(topic_id):
 @app.route('/nothing/<int:topic_id>')
 def show_nothing(topic_id):
     """Display no more messages for this topic."""
-    return render_template('nothing.html')
+    user_info=obtain_user_info()
+    return render_template('nothing.html', user_info=user_info)
 
 @app.route('/message/<int:message_id>')
 def show_message(message_id):
@@ -104,7 +105,7 @@ def show_message(message_id):
     if not message_info:
         return redirect('/oops')
     set_seen(conn, user_info.user_id, message_id)
-    return render_template('message.html', message_info=message_info)
+    return render_template('message.html', message_info=message_info, user_info=user_info)
 
 @app.route('/oops')
 def show_oops():
@@ -117,7 +118,7 @@ def show_kills():
     user_info=obtain_user_info()
     message_kills = get_message_kills(conn, user_info.user_id)
     user_kills = get_user_kills(conn, user_info.user_id)
-    return render_template('kills.html', user_kills=user_kills, message_kills=message_kills)
+    return render_template('kills.html', user_kills=user_kills, message_kills=message_kills, user_info=user_info)
 
 
 
@@ -175,12 +176,13 @@ def reply():
     if message_id is None or not message:
         return redirect('/oops')
     add_reply(conn, user_info.user_id, message_id, message)
-    return show_next(conn, user_info, message_id)
+    return show_next(conn, user_info.user_id, message_id)
 
 @app.route('/newtopic', methods=['GET'])
 def new_topic_form():
     """Show a form allowing a user to enter a new topic"""
-    return render_template('newtopic.html')
+    user_info=obtain_user_info()
+    return render_template('newtopic.html', user_info=user_info)
 
 
 @app.route('/newtopic', methods=['POST'])
@@ -200,12 +202,12 @@ def show_tree(topic_id):
     """Show the tree for this topic_id."""
     user_info=obtain_user_info()
     thetable = topic_tree(conn, user_id=user_info.user_id, topic_id=topic_id)
-    return render_template('tree.html', thetable=thetable)
+    return render_template('tree.html', thetable=thetable, user_info=user_info)
 
 @app.route('/bye')
 def bye():
     if session.get('user_id'):
         del session['user_id']
-    return render_template('/bye')
+    return render_template('/bye.html')
 
     

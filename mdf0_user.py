@@ -31,6 +31,7 @@ def create_temp_user(conn):
     cur.execute(query, (user_name,))
     user_id = conn.insert_id()
     conn.commit()
+    recursive_kill(conn, user_id)
     return get_user_info(conn, user_id)
 
 def register(conn, name, password, email, old_user_id=None):
